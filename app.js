@@ -1,3 +1,8 @@
+// Supabase Client Initialization
+const supabaseUrl = 'https://wfyuxxskwlczoyisdcmy.supabase.co';
+const supabaseKey = 'sb_publishable_yUeE6ynEpbR3Eq-k3Gv1Ew_1DiaJHjz';
+const supabase = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+
 // Real-time Treatment Sequence Tracker State
 const state = {
   female: {
@@ -113,11 +118,8 @@ const btnConfirmCancelProgress = document.getElementById('btn-confirm-cancel-pro
 const btnCancelProgressModal = document.getElementById('btn-cancel-progress-modal');
 let activeCancelSlot = null;
 
-// Load state from localStorage on init
-function initApp() {
-  document.body.setAttribute('data-active-tab', 'all');
-  const allDocs = ['최보빈', '김준현', '김영윤', '박지현', '안태윤', '황두호'];
-  
+// Load state from localStorage on init (helper)
+function loadStateFromLocalStorage() {
   const savedState = localStorage.getItem('clinic_treatment_state');
   if (savedState) {
     try {
@@ -150,38 +152,6 @@ function initApp() {
       console.error('Error parsing saved state:', e);
     }
   }
-
-  // Normalize old placenta values ('자하거<br>디나' -> '자하거/디나')
-  const wards = ['female', 'male', 'secondFloor'];
-  wards.forEach(w => {
-    if (state[w]) {
-      Object.keys(state[w]).forEach(d => {
-        if (Array.isArray(state[w][d])) {
-          state[w][d] = state[w][d].map(val => {
-            if (val === '자하거<br>디나') return '자하거/디나';
-            if (val === '자하거<br>디나_progress') return '자하거/디나_progress';
-            return val;
-          });
-        }
-      });
-    }
-  });
-
-  // Ensure all doctor name keys are present in slots, leave times, off duty status
-  allDocs.forEach(d => {
-    if (!state.female[d]) state.female[d] = Array(8).fill(null);
-    if (!state.male[d]) state.male[d] = Array(8).fill(null);
-    if (!state.secondFloor[d]) state.secondFloor[d] = Array(8).fill(null);
-    if (leaveTimes[d] === undefined) leaveTimes[d] = null;
-    if (offDutyDirectors[d] === undefined) offDutyDirectors[d] = false;
-  });
-
-  // Ensure all rows are properly compacted and padded
-  allDocs.forEach(d => {
-    compactRowState('female', d);
-    compactRowState('male', d);
-    compactRowState('secondFloor', d);
-  });
 
   // Load row directors for Floor 1 and Floor 2
   const savedDirectors1 = localStorage.getItem('clinic_row_directors_floor1') || localStorage.getItem('clinic_row_directors');
@@ -220,8 +190,74 @@ function initApp() {
       console.error('Error parsing saved off-duty state:', e);
     }
   }
+}
+
+// Load state from Supabase or localStorage on init
+async function initApp() {
+  document.body.setAttribute('data-active-tab', 'all');
+  const allDocs = ['최보빈', '김준현', '김영윤', '박지현', '안태윤', '황두호'];
+  
+  if (supabase) {
+    try {
+      const { data: dbRow, error } = await supabase
+        .from('clinic_state')
+        .select('data')
+        .eq('id', 'global')
+        .single();
+        
+      if (!error && dbRow && dbRow.data) {
+        const dbData = dbRow.data;
+        if (dbData.state) Object.assign(state, dbData.state);
+        if (dbData.leaveTimes) Object.assign(leaveTimes, dbData.leaveTimes);
+        if (dbData.offDutyDirectors) Object.assign(offDutyDirectors, dbData.offDutyDirectors);
+        if (dbData.rowDirectorsFloor1) Object.assign(rowDirectorsFloor1, dbData.rowDirectorsFloor1);
+        if (dbData.rowDirectorsFloor2) Object.assign(rowDirectorsFloor2, dbData.rowDirectorsFloor2);
+      } else {
+        console.warn('Could not fetch state from Supabase, falling back to localStorage:', error);
+        loadStateFromLocalStorage();
+      }
+    } catch (e) {
+      console.error('Error fetching state from Supabase:', e);
+      loadStateFromLocalStorage();
+    }
+  } else {
+    loadStateFromLocalStorage();
+  }
+
+  // Normalize old placenta values ('자하거<br>디나' -> '자하거/디나')
+  const wards = ['female', 'male', 'secondFloor'];
+  wards.forEach(w => {
+    if (state[w]) {
+      Object.keys(state[w]).forEach(d => {
+        if (Array.isArray(state[w][d])) {
+          state[w][d] = state[w][d].map(val => {
+            if (val === '자하거<br>디나') return '자하거/디나';
+            if (val === '자하거<br>디나_progress') return '자하거/디나_progress';
+            return val;
+          });
+        }
+      });
+    }
+  });
+
+  // Ensure all doctor name keys are present in slots, leave times, off duty status
+  allDocs.forEach(d => {
+    if (!state.female[d]) state.female[d] = Array(8).fill(null);
+    if (!state.male[d]) state.male[d] = Array(8).fill(null);
+    if (!state.secondFloor[d]) state.secondFloor[d] = Array(8).fill(null);
+    if (leaveTimes[d] === undefined) leaveTimes[d] = null;
+    if (offDutyDirectors[d] === undefined) offDutyDirectors[d] = false;
+  });
+
+  // Ensure all rows are properly compacted and padded
+  allDocs.forEach(d => {
+    compactRowState('female', d);
+    compactRowState('male', d);
+    compactRowState('secondFloor', d);
+  });
 
   setupEventListeners();
+  setupSupabaseRealtime();
   updateUI();
   startClock();
 
@@ -239,9 +275,66 @@ function initApp() {
   }
 }
 
-// Save current state to localStorage
-function saveState() {
+// Setup Supabase Realtime channel subscription to receive live updates
+function setupSupabaseRealtime() {
+  if (!supabase) return;
+
+  supabase
+    .channel('public:clinic_state')
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'clinic_state',
+        filter: 'id=eq.global'
+      },
+      (payload) => {
+        const newData = payload.new.data;
+        if (newData) {
+          if (newData.state) Object.assign(state, newData.state);
+          if (newData.leaveTimes) Object.assign(leaveTimes, newData.leaveTimes);
+          if (newData.offDutyDirectors) Object.assign(offDutyDirectors, newData.offDutyDirectors);
+          if (newData.rowDirectorsFloor1) Object.assign(rowDirectorsFloor1, newData.rowDirectorsFloor1);
+          if (newData.rowDirectorsFloor2) Object.assign(rowDirectorsFloor2, newData.rowDirectorsFloor2);
+          
+          updateUI();
+        }
+      }
+    )
+    .subscribe();
+}
+
+// Save current state to localStorage and Supabase
+async function saveState() {
   localStorage.setItem('clinic_treatment_state', JSON.stringify(state));
+  localStorage.setItem('clinic_leave_times', JSON.stringify(leaveTimes));
+  localStorage.setItem('clinic_off_duty_directors', JSON.stringify(offDutyDirectors));
+  localStorage.setItem('clinic_row_directors_floor1', JSON.stringify(rowDirectorsFloor1));
+  localStorage.setItem('clinic_row_directors_floor2', JSON.stringify(rowDirectorsFloor2));
+
+  if (supabase) {
+    try {
+      const { error } = await supabase
+        .from('clinic_state')
+        .upsert({
+          id: 'global',
+          data: {
+            state,
+            leaveTimes,
+            offDutyDirectors,
+            rowDirectorsFloor1,
+            rowDirectorsFloor2
+          },
+          updated_at: new Date().toISOString()
+        });
+      if (error) {
+        console.error('Error saving state to Supabase:', error);
+      }
+    } catch (e) {
+      console.error('Exception saving state to Supabase:', e);
+    }
+  }
 }
 
 // Compact row state to remove nulls and pad/keep size accordingly
@@ -1012,7 +1105,7 @@ function setupEventListeners() {
     if (activeDirectorName !== null) {
       // Toggle off-duty state
       offDutyDirectors[activeDirectorName] = !offDutyDirectors[activeDirectorName];
-      localStorage.setItem('clinic_off_duty_directors', JSON.stringify(offDutyDirectors));
+      saveState();
       updateUI();
       closeDirectorModal();
     }
@@ -1363,12 +1456,7 @@ function selectDoctor(docName) {
     directors[activeDirectorRow] = docName;
     offDutyDirectors[docName] = false; // Turn off off-duty state!
     
-    if (activeDirectorFloor === 1) {
-      localStorage.setItem('clinic_row_directors_floor1', JSON.stringify(rowDirectorsFloor1));
-    } else {
-      localStorage.setItem('clinic_row_directors_floor2', JSON.stringify(rowDirectorsFloor2));
-    }
-    localStorage.setItem('clinic_off_duty_directors', JSON.stringify(offDutyDirectors));
+    saveState();
     updateUI();
     closeDirectorModal();
   }
@@ -1414,7 +1502,7 @@ function openLeaveTimeModal(docName) {
 function selectLeaveTime(val) {
   if (activeLeaveTimeDoc !== null) {
     leaveTimes[activeLeaveTimeDoc] = val;
-    localStorage.setItem('clinic_leave_times', JSON.stringify(leaveTimes));
+    saveState();
     updateUI();
     closeLeaveTimeModal();
   }
@@ -1540,11 +1628,8 @@ async function syncScheduleFromSupabase({ silent = false } = {}) {
       offDutyDirectors[info.name] = info.isOff;
     });
     
-    // Save to localStorage
-    localStorage.setItem('clinic_row_directors_floor1', JSON.stringify(rowDirectorsFloor1));
-    localStorage.setItem('clinic_row_directors_floor2', JSON.stringify(rowDirectorsFloor2));
-    localStorage.setItem('clinic_leave_times', JSON.stringify(leaveTimes));
-    localStorage.setItem('clinic_off_duty_directors', JSON.stringify(offDutyDirectors));
+    // Save to Supabase and localStorage
+    saveState();
     
     // Record last sync date
     localStorage.setItem('clinic_last_sync_date', todayStr);
@@ -1576,11 +1661,7 @@ function swapRows(floor, rowA, rowB) {
   directors[rowA] = directors[rowB];
   directors[rowB] = temp;
   
-  if (floor === 1) {
-    localStorage.setItem('clinic_row_directors_floor1', JSON.stringify(rowDirectorsFloor1));
-  } else {
-    localStorage.setItem('clinic_row_directors_floor2', JSON.stringify(rowDirectorsFloor2));
-  }
+  saveState();
   
   updateUI();
 }
