@@ -708,13 +708,6 @@ function clearOtherWardsProgress(docName, activeWard) {
   });
 }
 
-// Helper to check if an item is a numeric bed number
-function isNumericItem(item) {
-  if (item === null || item === undefined) return false;
-  const parsed = parseInt(item, 10);
-  return !isNaN(parsed) && String(parsed) === String(item);
-}
-
 // Handle cross-ward routing and standard queue shifts when an item is cleared from index 0
 function handleQueueShift(ward, docName, index, clearedValue) {
   if (index !== 0 || !clearedValue) return;
@@ -744,11 +737,9 @@ function handleQueueShift(ward, docName, index, clearedValue) {
     const targetItem = state[targetWard][docName][0];
     if (targetItem !== null && targetItem !== undefined) {
       if (typeof targetItem !== 'string' || !targetItem.endsWith('_progress')) {
-        if (isNumericItem(targetItem)) {
-          console.log(`[Queue Routing] Routing in-progress from ${ward} to ${targetWard} for ${docName}. Setting item ${targetItem} to progress.`);
-          state[targetWard][docName][0] = String(targetItem) + '_progress';
-          clearOtherWardsProgress(docName, targetWard);
-        }
+        console.log(`[Queue Routing] Routing in-progress from ${ward} to ${targetWard} for ${docName}. Setting item ${targetItem} to progress.`);
+        state[targetWard][docName][0] = String(targetItem) + '_progress';
+        clearOtherWardsProgress(docName, targetWard);
         return; // Return early so we do NOT auto-start the next patient in the current ward!
       }
     }
@@ -758,11 +749,9 @@ function handleQueueShift(ward, docName, index, clearedValue) {
   const nextItem = state[ward][docName][0];
   if (nextItem !== null && nextItem !== undefined) {
     if (typeof nextItem !== 'string' || !nextItem.endsWith('_progress')) {
-      if (isNumericItem(nextItem)) {
-        console.log(`[Queue Routing] Auto-transitioning next item ${nextItem} to progress in current ward ${ward}.`);
-        state[ward][docName][0] = String(nextItem) + '_progress';
-        clearOtherWardsProgress(docName, ward);
-      }
+      console.log(`[Queue Routing] Auto-transitioning next item ${nextItem} to progress in current ward ${ward}.`);
+      state[ward][docName][0] = String(nextItem) + '_progress';
+      clearOtherWardsProgress(docName, ward);
     }
   }
 }
