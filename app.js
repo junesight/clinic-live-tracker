@@ -1,7 +1,7 @@
 // Supabase Client Initialization
 const supabaseUrl = 'https://wfyuxxskwlczoyisdcmy.supabase.co';
 const supabaseKey = 'sb_publishable_yUeE6ynEpbR3Eq-k3Gv1Ew_1DiaJHjz';
-const supabase = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
 
 // Real-time Treatment Sequence Tracker State
 const state = {
@@ -197,9 +197,9 @@ async function initApp() {
   document.body.setAttribute('data-active-tab', 'all');
   const allDocs = ['최보빈', '김준현', '김영윤', '박지현', '안태윤', '황두호'];
   
-  if (supabase) {
+  if (supabaseClient) {
     try {
-      const { data: dbRow, error } = await supabase
+      const { data: dbRow, error } = await supabaseClient
         .from('clinic_state')
         .select('data')
         .eq('id', 'global')
@@ -277,9 +277,9 @@ async function initApp() {
 
 // Setup Supabase Realtime channel subscription to receive live updates
 function setupSupabaseRealtime() {
-  if (!supabase) return;
+  if (!supabaseClient) return;
 
-  supabase
+  supabaseClient
     .channel('public:clinic_state')
     .on(
       'postgres_changes',
@@ -313,9 +313,9 @@ async function saveState() {
   localStorage.setItem('clinic_row_directors_floor1', JSON.stringify(rowDirectorsFloor1));
   localStorage.setItem('clinic_row_directors_floor2', JSON.stringify(rowDirectorsFloor2));
 
-  if (supabase) {
+  if (supabaseClient) {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('clinic_state')
         .upsert({
           id: 'global',
