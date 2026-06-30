@@ -487,6 +487,7 @@ body {
   position: relative;
   transition: all 0.2s ease;
   user-select: none;
+  container-type: inline-size;
 }
 
 .slot::before {
@@ -731,7 +732,12 @@ body {
 .slot.opt-placenta .slot-magnet {
   background: #10b981;
   color: #ffffff;
-  line-height: 1.15 !important;
+  line-height: 1.1 !important;
+  font-size: 0.85rem !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 /* 상담 - 빨간색 */
@@ -823,6 +829,28 @@ body {
     inset 0 -1.5px 3px rgba(0,0,0,0.15);
   text-shadow: 0 1px 2px rgba(0,0,0,0.15);
   text-align: center;
+  white-space: nowrap;
+}
+
+/* Container query to auto-scale text font size on narrow slots */
+@container (max-width: 55px) {
+  .slot-magnet.text-magnet {
+    font-size: 0.8rem !important;
+  }
+  .slot.opt-placenta .slot-magnet {
+    font-size: 0.72rem !important;
+    line-height: 1.05 !important;
+  }
+}
+
+@container (max-width: 45px) {
+  .slot-magnet.text-magnet {
+    font-size: 0.68rem !important;
+  }
+  .slot.opt-placenta .slot-magnet {
+    font-size: 0.6rem !important;
+    line-height: 1.0 !important;
+  }
 }
 
 @keyframes magnetSnap {
