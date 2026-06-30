@@ -238,7 +238,7 @@ body {
 
 @media (min-width: 1025px) {
   .board-grid {
-    grid-template-columns: 120px 4px 1fr 4px 1fr;
+    grid-template-columns: 100px 4px 1fr 4px 1fr;
     column-gap: 2rem;
     row-gap: 1.25rem;
   }
@@ -1347,7 +1347,7 @@ body {
 @media (min-width: 1251px) {
   .tabs-container {
     position: absolute;
-    left: calc(50% + 94px);
+    left: calc(50% + 84px);
     transform: translateX(-50%);
     z-index: 10;
   }
@@ -1512,7 +1512,7 @@ body {
 
 @media (min-width: 1025px) {
   body[data-active-tab="floor2"] #panel-floor2 .board-grid {
-    grid-template-columns: 120px 1fr;
+    grid-template-columns: 100px 1fr;
     width: calc(50% + 40px);
     margin: 0 auto;
   }
