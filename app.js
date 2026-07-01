@@ -869,6 +869,13 @@ function setupEventListeners() {
     });
   });
 
+// Helper to check if an item is a space transition arrow
+function isArrowItem(val) {
+  if (typeof val !== 'string') return false;
+  const arrows = ['▶', '◀', '▲', '▼', '▼여', '▼남', '➡️', '⬅️', '⬆️', '⬇️', '→', '←', '↑', '↓'];
+  return arrows.includes(val);
+}
+
   // Slot and Director tag clicking (using event delegation on main container)
   boardWrapper.addEventListener('click', (e) => {
     const slot = e.target.closest('.slot');
@@ -888,9 +895,17 @@ function setupEventListeners() {
         if (typeof currentVal === 'string' && currentVal.endsWith('_progress')) {
           console.log(`[Click Debug] Second click on progress item. Splicing index ${index}`);
           const clearedVal = state[ward][docName][index];
-          state[ward][docName].splice(index, 1);
-          compactRowState(ward, docName);
-          handleQueueShift(ward, docName, index, clearedVal);
+          
+          if (index === 0 && state[ward][docName][1] && isArrowItem(state[ward][docName][1])) {
+            const arrowVal = state[ward][docName][1];
+            state[ward][docName].splice(0, 2);
+            compactRowState(ward, docName);
+            handleQueueShift(ward, docName, 0, arrowVal);
+          } else {
+            state[ward][docName].splice(index, 1);
+            compactRowState(ward, docName);
+            handleQueueShift(ward, docName, index, clearedVal);
+          }
         } else {
           console.log(`[Click Debug] First click on normal item. Transitioning to progress.`);
           state[ward][docName][index] = String(currentVal) + '_progress';
