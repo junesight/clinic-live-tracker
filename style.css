@@ -639,6 +639,13 @@ body {
   border-color: #e2e8f0 !important;
 }
 
+/* 드래그 앤 드롭 시 다른 원장 행으로 올릴 때의 하이라이트 */
+.slots-container.drag-over-container {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  outline: 2px dashed #10b981 !important;
+  outline-offset: -2px;
+}
+
 .slot:hover {
   border-color: var(--slot-hover-border);
   background-color: var(--slot-hover-bg);

@@ -982,10 +982,40 @@ function setupEventListeners() {
   boardWrapper.addEventListener('dragover', (e) => {
     if (dragType === 'magnet') {
       const slot = e.target.closest('.slot');
-      if (slot) {
+      const container = e.target.closest('.slots-container');
+      const cell = e.target.closest('.director-left-cell');
+      
+      if (slot || container || cell) {
+        let targetDoc = null;
+        if (slot) {
+          targetDoc = slot.dataset.doc;
+        } else if (container) {
+          const directorId = container.dataset.director;
+          const isFloor1 = container.dataset.ward !== 'secondFloor';
+          const panelId = isFloor1 ? '#panel-floor1' : '#panel-floor2';
+          const tag = document.querySelector(`${panelId} .director-tag[data-row="${directorId}"]`);
+          targetDoc = tag ? tag.textContent.replace('(퇴근)', '').trim() : null;
+        } else if (cell) {
+          const tag = cell.querySelector('.director-tag');
+          targetDoc = tag ? tag.textContent.replace('(퇴근)', '').trim() : null;
+        }
+        
+        // If target doctor is off-duty, do not allow drop
+        if (targetDoc && offDutyDirectors[targetDoc]) {
+          return;
+        }
+
         e.preventDefault();
         if (dragSource.ward) {
-          slot.classList.add('drag-over');
+          // Clear other drag-overs first
+          document.querySelectorAll('.slot.drag-over').forEach(el => el.classList.remove('drag-over'));
+          document.querySelectorAll('.slots-container.drag-over-container').forEach(el => el.classList.remove('drag-over-container'));
+          
+          if (slot) {
+            slot.classList.add('drag-over');
+          } else if (container) {
+            container.classList.add('drag-over-container');
+          }
         }
       }
     } else if (dragType === 'row') {
@@ -1008,8 +1038,12 @@ function setupEventListeners() {
   boardWrapper.addEventListener('dragleave', (e) => {
     if (dragType === 'magnet') {
       const slot = e.target.closest('.slot');
+      const container = e.target.closest('.slots-container');
       if (slot) {
         slot.classList.remove('drag-over');
+      }
+      if (container) {
+        container.classList.remove('drag-over-container');
       }
     } else if (dragType === 'row') {
       const cell = e.target.closest('.director-left-cell');
@@ -1022,14 +1056,53 @@ function setupEventListeners() {
   // Drop
   boardWrapper.addEventListener('drop', (e) => {
     if (dragType === 'magnet') {
-      const slot = e.target.closest('.slot');
-      if (slot && dragSource.ward) {
-        e.preventDefault();
-        slot.classList.remove('drag-over');
+      let targetDoc = null;
+      let targetWard = null;
+      let targetIndex = null;
 
-        const targetDoc = slot.dataset.doc;
-        const targetWard = slot.dataset.ward;
-        const targetIndex = parseInt(slot.dataset.index, 10);
+      const slot = e.target.closest('.slot');
+      const container = e.target.closest('.slots-container');
+      const cell = e.target.closest('.director-left-cell');
+
+      if (slot) {
+        targetDoc = slot.dataset.doc;
+        targetWard = slot.dataset.ward;
+        targetIndex = parseInt(slot.dataset.index, 10);
+        slot.classList.remove('drag-over');
+      } else if (container) {
+        targetWard = container.dataset.ward;
+        const directorId = container.dataset.director;
+        const isFloor1 = targetWard !== 'secondFloor';
+        const panelId = isFloor1 ? '#panel-floor1' : '#panel-floor2';
+        const tag = document.querySelector(`${panelId} .director-tag[data-row="${directorId}"]`);
+        targetDoc = tag ? tag.textContent.replace('(퇴근)', '').trim() : null;
+        
+        if (targetDoc && targetWard) {
+          const activeTarget = state[targetWard][targetDoc].filter(v => v !== null);
+          targetIndex = activeTarget.length;
+        }
+        container.classList.remove('drag-over-container');
+      } else if (cell) {
+        const directorId = cell.dataset.row;
+        const panel = cell.closest('.board-panel');
+        const isFloor1 = panel.id === 'panel-floor1';
+        targetWard = isFloor1 ? dragSource.ward : 'secondFloor';
+        const tag = cell.querySelector('.director-tag');
+        targetDoc = tag ? tag.textContent.replace('(퇴근)', '').trim() : null;
+        
+        if (targetDoc && targetWard) {
+          const activeTarget = state[targetWard][targetDoc].filter(v => v !== null);
+          targetIndex = activeTarget.length;
+        }
+      }
+
+      if (targetDoc && targetWard && targetIndex !== null && dragSource.ward) {
+        e.preventDefault();
+        
+        // Block dropping on off-duty doctors
+        if (offDutyDirectors[targetDoc]) {
+          return;
+        }
 
         const sourceWard = dragSource.ward;
         const sourceDoc = dragSource.docName;
