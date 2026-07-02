@@ -231,7 +231,8 @@ body[data-active-tab="floor2"] #panel-floor2 {
   }
 
   /* Floor 1 side-by-side desktop layout */
-  #panel-floor1 {
+  body[data-active-tab="all"] #panel-floor1,
+  body[data-active-tab="floor1"] #panel-floor1 {
     display: flex !important;
     flex-direction: row !important;
     gap: 2rem !important;
@@ -335,7 +336,8 @@ body[data-active-tab="floor2"] #panel-floor2 {
   .board-grid {
     grid-template-columns: 1fr;
   }
-  #panel-floor1 {
+  body[data-active-tab="all"] #panel-floor1,
+  body[data-active-tab="floor1"] #panel-floor1 {
     display: flex !important;
     flex-direction: column !important;
     gap: 1.5rem !important;
@@ -1636,7 +1638,8 @@ body[data-active-tab="floor2"] #panel-floor2 {
   }
 
   /* Grid layout overrides for Tablet */
-  #panel-floor1 {
+  body[data-active-tab="all"] #panel-floor1,
+  body[data-active-tab="floor1"] #panel-floor1 {
     display: flex !important;
     flex-direction: column !important;
     gap: 1.5rem !important;
