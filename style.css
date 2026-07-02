@@ -250,6 +250,11 @@ body[data-active-tab="floor2"] #panel-floor2 {
     max-width: calc(50% - 1rem) !important;
   }
 
+  /* Center second floor ward section when in floor2 view */
+  body[data-active-tab="floor2"] .second-floor-ward-section {
+    margin: 0 auto !important;
+  }
+
   /* On PC (desktop), hide the male ward doctor tags to match 3-column look */
   .male-ward-section .left-header,
   .male-ward-section .director-left-cell {
@@ -1651,6 +1656,12 @@ body[data-active-tab="floor2"] #panel-floor2 {
     width: 100% !important;
     max-width: 100% !important;
     flex: none !important;
+  }
+
+  /* Center 2nd floor ward section and constraint width to 85% on tablet when floor2 view is active */
+  body[data-active-tab="floor2"] .second-floor-ward-section {
+    max-width: 85% !important;
+    margin: 0 auto !important;
   }
 
   /* Show male ward doctor tags on tablet */
